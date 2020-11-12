@@ -23,7 +23,7 @@ func Category() model.RiskCategory {
 		DetectionLogic: "In-scope non-client systems accessing (using outgoing communication links) targets with either HTTP or HTTPS protocol.",
 		RiskAssessment: "The risk rating (low or medium) depends on the sensitivity of the data assets receivable via web protocols from " +
 			"targets within the same network trust-boundary as well on the sensitivity of the data assets receivable via web protocols from the target asset itself. " +
-			"Also for cloud-based environments the exploitation impact is ar least medium, as cloud backend services can be attacked via SSRF.",
+			"Also for cloud-based environments the exploitation impact is at least medium, as cloud backend services can be attacked via SSRF.",
 		FalsePositives: "Servers not sending outgoing web requests can be considered " +
 			"as false positives after review.",
 		ModelFailurePossibleReason: false,
@@ -61,13 +61,13 @@ func createRisk(technicalAsset model.TechnicalAsset, outgoingFlow model.Communic
 		impact = model.MediumImpact
 	}
 	// check all potential attack targets within the same trust boundary (accessible via web protocols)
-	uniqueDataLossTechnicalAssetIDs := make(map[string]interface{})
-	uniqueDataLossTechnicalAssetIDs[technicalAsset.Id] = true
+	uniqueDataBreachTechnicalAssetIDs := make(map[string]interface{})
+	uniqueDataBreachTechnicalAssetIDs[technicalAsset.Id] = true
 	for _, potentialTargetAsset := range model.ParsedModelRoot.TechnicalAssets {
 		if technicalAsset.IsSameTrustBoundaryNetworkOnly(potentialTargetAsset.Id) {
 			for _, commLinkIncoming := range model.IncomingTechnicalCommunicationLinksMappedByTargetId[potentialTargetAsset.Id] {
 				if commLinkIncoming.Protocol.IsPotentialWebAccessProtocol() {
-					uniqueDataLossTechnicalAssetIDs[potentialTargetAsset.Id] = true
+					uniqueDataBreachTechnicalAssetIDs[potentialTargetAsset.Id] = true
 					if potentialTargetAsset.HighestConfidentiality() == model.StrictlyConfidential {
 						impact = model.MediumImpact
 					}
@@ -79,9 +79,9 @@ func createRisk(technicalAsset model.TechnicalAsset, outgoingFlow model.Communic
 	if impact == model.LowImpact && model.ParsedModelRoot.TrustBoundaries[technicalAsset.GetTrustBoundaryId()].Type.IsWithinCloud() {
 		impact = model.MediumImpact
 	}
-	dataLossTechnicalAssetIDs := make([]string, 0)
-	for key, _ := range uniqueDataLossTechnicalAssetIDs {
-		dataLossTechnicalAssetIDs = append(dataLossTechnicalAssetIDs, key)
+	dataBreachTechnicalAssetIDs := make([]string, 0)
+	for key, _ := range uniqueDataBreachTechnicalAssetIDs {
+		dataBreachTechnicalAssetIDs = append(dataBreachTechnicalAssetIDs, key)
 	}
 	likelihood := model.Likely
 	if outgoingFlow.Usage == model.DevOps {
@@ -95,8 +95,8 @@ func createRisk(technicalAsset model.TechnicalAsset, outgoingFlow model.Communic
 		Title:                           title,
 		MostRelevantTechnicalAssetId:    technicalAsset.Id,
 		MostRelevantCommunicationLinkId: outgoingFlow.Id,
-		DataLossProbability:             model.Possible,
-		DataLossTechnicalAssetIDs:       dataLossTechnicalAssetIDs,
+		DataBreachProbability:           model.Possible,
+		DataBreachTechnicalAssetIDs:     dataBreachTechnicalAssetIDs,
 	}
 	risk.SyntheticId = risk.Category.Id + "@" + technicalAsset.Id + "@" + target.Id + "@" + outgoingFlow.Id
 	return risk
